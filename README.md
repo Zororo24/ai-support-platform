@@ -1,114 +1,173 @@
-# ai-support-platform
+# AI Support Platform
 
-A multi-tenant **AI agent platform**. A company configures an agent in the dashboard (knowledge, instructions, actions in its own systems, guided multi-step processes, guardrails), publishes a version, and plugs it into its **own** chatbot or website through a small HTTP API. There is no end-user screen to embed: the company's backend sends each customer message to `/v1`, and shows what comes back.
+A multi-tenant platform for building, testing and running AI agents. A company configures an agent in a dashboard (knowledge base, instructions, actions in its own systems, guided workflows, guardrails), publishes a version, and connects it to its own chatbot or website through a small public HTTP API.
 
-**Stack:** Python 3.12, FastAPI, SQLAlchemy/Alembic, PostgreSQL 16 + pgvector, Redis, React + Vite + TypeScript. LangGraph only powers the legacy dashboard chat.
+There is no end-user widget to embed. The company's backend sends each customer message to `/v1` and renders whatever comes back, so the agent fits into any existing product.
 
-Design, decisions and phase history: [PLAN.md](./PLAN.md). Docs for integrators: [docs/quickstart.md](docs/quickstart.md) and [docs/api-reference.md](docs/api-reference.md). Python and Node clients: [clients/](clients/README.md). A runnable sample website: [examples/chat-site](examples/chat-site).
+**Stack:** Python 3.12, FastAPI, SQLAlchemy 2, Alembic, PostgreSQL 16 + pgvector, Redis, React, Vite, TypeScript.
 
-> **Verification status (read this).** Every test here runs against a deterministic fake model and fake company APIs; nothing in this repository has been run against a real LLM provider yet. The tests prove what the platform does with whatever the model returns (validation, policy, state, retries). They cannot prove that a real model decides well, that real embeddings retrieve well, or that your prompts suit your model. Before relying on it, follow [Checking with a real model](#checking-with-a-real-model).
+## Features
 
-## What it does
-
-| Area | What a company gets |
+| Area | What it does |
 |---|---|
-| **Agents** | Create from a template; instructions, language, handoff behaviour, limits. Draft and **published versions** (immutable; roll back in one click; diff between any two) |
-| **Knowledge** | Collections of documents (`.md/.txt/.pdf/.docx`/pasted text), heading-aware chunking (tables kept intact), hybrid search (meaning + keywords), optional query rewriting and reranking, a **retrieval tester**, and a **quality report** that measures whether search finds the right document |
-| **Actions** | Things the agent may do in the company's systems over HTTP: form-based definition, input schema, safety rules (e.g. block refunds over $200), a **Test** button, encrypted **Connections**. Or let the company's own backend perform them (**hand-back**, no credentials held here) |
-| **Processes** | Guided multi-turn workflows (collect details, check eligibility, confirm, act) built from templates in a form editor; resumable across messages |
-| **Approvals** | Writes can need the customer's confirmation, or a person on the company's team (**Approvals** screen) |
-| **Webhooks** | Signed, retried, replayable events: hand-offs, approval requests/decisions, failures, budget alerts |
-| **Testing** | Playground with live trace and sample responses; **scenario tests** that assert behaviour and run before every publish; **replay** past conversations against the draft |
-| **Operations** | Runs and step traces, usage per agent, **daily token budgets**, **retention** and **PII masking**, API key address allow-lists, rate limits, audit log, optional per-workspace AI provider key |
+| **Agents** | Create from a template; set instructions, language, hand-off behaviour and limits. Draft and immutable **published versions** with one-click rollback and a diff between any two versions |
+| **Knowledge base** | Collections of documents (`.md`, `.txt`, `.pdf`, `.docx`, pasted text). Heading-aware chunking that keeps tables intact, hybrid search (vector + keyword, rank fusion), optional query rewriting and reranking, a retrieval tester, and quality reports (recall@k, MRR) |
+| **Actions** | Calls into the company's own systems over HTTP, defined in a form: input schema, guard rules (for example "block refunds over $200"), a Test button and encrypted connections. An action can instead be performed by the company's backend (hand-back), so no credentials are stored here |
+| **Workflows** | Guided multi-turn processes (collect details, check eligibility, confirm, act) built from templates in a form editor and resumable across messages |
+| **Approvals** | Write actions can require the customer's confirmation or a staff member's approval |
+| **Webhooks** | HMAC-signed events (hand-offs, approvals, failures, budget alerts) with retries and replay |
+| **Testing** | Playground with a live step trace, scenario tests that assert agent behaviour and gate publishing, and replay of past conversations against the draft |
+| **Operations** | Run traces, usage per agent, daily token budgets, data retention, PII masking, API key IP allow-lists, rate limits, audit log, optional per-workspace model key |
 
-## Running locally
+## How it works
 
-Prerequisites: Docker, Python 3.12+, Node 20+, and an LLM API key (see below).
+```
+ Company's chatbot / website
+            │  POST /v1/agents/{id}/messages   (API key)
+            ▼
+ ┌─────────────────────────── FastAPI ───────────────────────────┐
+ │  decision loop ──► reply │ answer_from_knowledge │ call_action │
+ │        │                 │ start_workflow        │ handoff     │
+ │        ▼                                                       │
+ │  policy in code: schema validation, guards, identity binding,  │
+ │  confirmations / approvals, token budgets, PII masking         │
+ └───────┬───────────────┬───────────────────┬───────────────────┘
+         │               │                   │
+   Postgres + pgvector   Redis          HTTP executor (SSRF-safe)
+   (data, chunks, jobs)  (limits, cache)   → company systems
+         │
+   background worker: indexing, webhook delivery, expiry, retention
+```
 
-```powershell
-copy .env.example .env        # then set LLM_API_KEY (and SECRETS_KEY, see below)
+The model proposes a JSON decision each step; the platform validates it and enforces policy in code. Customer identity comes from trusted `context.*` values supplied by the company's backend, never from model output.
+
+A response `status` tells the caller what to do next: `completed`, `needs_input`, `needs_confirmation`, `pending_approval`, `action_required`, `handed_off` or `failed`.
+
+## Getting started
+
+Requires Docker, Python 3.12+, Node 20+ and an API key for an OpenAI-compatible model provider (Gemini works with a free key).
+
+```bash
+cp .env.example .env            # Windows: copy .env.example .env
+```
+
+Edit `.env`:
+
+- `LLM_API_KEY`: your provider key
+- `LLM_MODEL`: a current chat model (for example `gemini-3.5-flash-lite`)
+- `SECRETS_KEY`: generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+- `JWT_SECRET`: any long random string
+
+Start the database and Redis, then the backend:
+
+```bash
 docker compose up db redis -d
 
 cd backend
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+source .venv/bin/activate       # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-alembic upgrade head          # schema + pgvector extension
+alembic upgrade head            # creates the schema and the pgvector extension
 cd ..
-python seed/seed.py           # two companies, users, a demo agent (needs the LLM key: it embeds the documents)
+python seed/seed.py             # demo companies, users and a sample agent (embeds documents, needs the key)
 
 cd backend
-uvicorn app.main:app --reload --port 8000     # also runs the background worker (JOBS_MODE=embedded)
+uvicorn app.main:app --reload --port 8000
 ```
 
-In another terminal:
+In a second terminal, start the frontend:
 
-```powershell
+```bash
 cd frontend
 npm install
-npm run dev                   # http://localhost:5173
+npm run dev                     # http://localhost:5173
 ```
 
-Everything in Docker: `docker compose --profile full up --build`, then `python seed/seed.py`. That starts the API, a separate **worker** (`JOBS_MODE=external`) and the web app.
+To run everything in containers instead: `docker compose --profile full up --build`, then `python seed/seed.py`.
 
-Demo logins (password `demo-password`, or `SEED_PASSWORD`): `acme.admin@example.com`, `globex.admin@example.com` (and `*.user@example.com`, which only use the legacy chat). The seeded **Store assistant** agent calls a fake store API served by this app (`ENABLE_DEMO_COMPANY_API`, local demos only; it requires `ALLOW_PRIVATE_CONNECTIONS=true`, which turns off the outbound-address safety checks and must never be set in production).
+**Demo logins** (password `demo-password`): `acme.admin@example.com` and `globex.admin@example.com` open the admin dashboard. `acme.user@example.com` and `globex.user@example.com` are customers and only see the original chat and tickets screens.
 
-### Configuration worth knowing
+Log in as an admin, open **Agents → Store assistant** and use the playground to try "Where is my order ACM-1002?". The seeded agent calls a fake store API served by this app (`ENABLE_DEMO_COMPANY_API`, local demos only; it needs `ALLOW_PRIVATE_CONNECTIONS=true`, which disables outbound-address safety checks and must never be set in production).
+
+API docs are served at http://localhost:8000/docs.
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `503 model_unavailable` | `LLM_API_KEY` missing or wrong, or the backend was started before `.env` was saved. Restart it. The server log shows the provider's error |
+| `ModuleNotFoundError` on install or start | Use Python 3.12+ and re-run `pip install -e ".[dev]"` inside the venv |
+| `WinError 10013` when starting uvicorn | Port 8000 is taken. Stop the other process or use `--port 8010` and set `API_PROXY_TARGET=http://localhost:8010` for the frontend |
+| `npm` not recognised | Reopen the terminal after installing Node so it picks up the new PATH |
+| Seed fails | It embeds documents, so it needs a working model key and Postgres running |
+
+## Configuration
 
 | Setting | Purpose |
 |---|---|
-| `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, `EMBEDDING_MODEL` | Any OpenAI-compatible provider. Defaults target Gemini. `EMBEDDING_DIMENSIONS` must equal the column size (1536). Without a working key the API answers `503 model_unavailable`; there is no rule-based fallback |
-| `SECRETS_KEY` | Encrypts connection credentials, webhook secrets and per-workspace AI keys (Fernet). Set it before storing any; losing it makes stored secrets unreadable |
-| `JOBS_MODE` | `embedded` (API runs the worker, dev), `external` (`python -m app.worker`, production), `sync` (tests) |
-| `TRUST_PROXY_HEADERS` | Read the caller address from `X-Forwarded-For` (last hop) so API key address allow-lists work behind a reverse proxy |
-| `TENANT_DAILY_TOKEN_BUDGET` | Optional workspace-wide daily token ceiling (0 = off); per-agent budgets are set in the dashboard |
-| `APPROVALS_TTL_HOURS`, `TOOL_RESULT_TTL_MINUTES` | How long staff / the customer's backend have to answer |
+| `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, `EMBEDDING_MODEL` | Any OpenAI-compatible provider. `EMBEDDING_DIMENSIONS` must match the stored vector size (1536). Without a working key the API answers `503 model_unavailable` |
+| `SECRETS_KEY` | Fernet key that encrypts connection credentials, webhook secrets and workspace model keys. Keep it; losing it makes stored secrets unreadable |
+| `JOBS_MODE` | `embedded` (API runs the worker, development), `external` (`python -m app.worker`, production) or `sync` (tests) |
+| `TRUST_PROXY_HEADERS` | Read the caller address from `X-Forwarded-For` so API key IP allow-lists work behind a reverse proxy |
+| `TENANT_DAILY_TOKEN_BUDGET` | Optional workspace-wide daily token ceiling (0 = off). Per-agent budgets are set in the dashboard |
+| `APPROVALS_TTL_HOURS`, `TOOL_RESULT_TTL_MINUTES` | How long staff or the customer's backend have to respond |
 
-If you change the embedding model, re-index (`python seed/seed.py --reindex`, or **Knowledge base → Quality → Rebuild index**) so stored vectors match.
+After changing the embedding model, re-index with `python seed/seed.py --reindex` or **Knowledge base → Quality → Rebuild index**.
 
-## The public API in one minute
+## Public API
 
 ```bash
-curl -X POST $BASE/v1/agents/$AGENT_ID/messages \
+curl -X POST http://localhost:8000/v1/agents/$AGENT_ID/messages \
   -H "Authorization: Bearer $AGENT_KEY" -H "Content-Type: application/json" \
   -d '{"message": "Where is my order ACM-1002?", "session_id": "chat-123",
        "end_user": {"id": "customer-42", "attributes": {"customer_id": "cust_42"}}}'
 ```
 
-The response `status` says what your code does next: `completed`, `needs_input`, `needs_confirmation` (→ `POST …/confirmations`), `pending_approval` (→ wait for a webhook), `action_required` (→ do it, then `POST …/tool-results`), `handed_off`, `failed`. Errors are `{"error": {"code", "message"}}` with stable codes. Full reference: [docs/api-reference.md](docs/api-reference.md). The contract is pinned by a snapshot test (`tests/snapshots/openapi_v1.json`) and `/v1` only evolves additively.
+Related endpoints continue a turn: `POST …/confirmations` for customer confirmations and `POST …/tool-results` when the company's backend performs an action. Responses stream over SSE when requested. Errors are `{"error": {"code", "message"}}` with stable codes, and the `/v1` contract is pinned by a snapshot test.
 
-Dashboard API docs: http://localhost:8000/docs.
+More: [docs/quickstart.md](docs/quickstart.md), [docs/api-reference.md](docs/api-reference.md), Python and Node clients in [clients/](clients/README.md), and a runnable sample website in [examples/chat-site](examples/chat-site).
 
-## Checking with a real model
+## Project layout
 
-Two scripts need a real key and a running database:
-
-```powershell
-python scripts/eval_retrieval.py --record     # first time: records recall@1/3/5 and MRR for the golden questions
-python scripts/eval_retrieval.py              # afterwards: exits 1 if retrieval got worse
-python scripts/eval_retrieval.py --rerank
+```
+backend/
+  app/
+    agents/      decision loop, actions, workflows, executor, scenario schema
+    api/         /v1 public API and dashboard routes
+    core/        settings, security, secrets vault, LLM client, SSRF guard, PII masking
+    db/          SQLAlchemy models
+    rag/         chunking, hybrid retrieval, rewrite, rerank, evaluation
+    services/    agents, documents, jobs, webhooks, approvals, budgets, scenarios
+    worker.py    background worker
+  alembic/       database migrations
+  tests/         test suite
+frontend/        React dashboard
+clients/         Python and Node clients
+examples/        sample chat site
+seed/, scripts/  demo data and retrieval evaluation
+docs/            quickstart and API reference
 ```
 
-and, in the dashboard, **Knowledge base → Quality** (AI-written test questions for *your* documents) and the agent's **Tests** tab (scenarios, which exercise the real model's decisions when you run them). `scripts/run_golden.py` exercises the legacy chat against a running server.
+## Testing
 
-Not yet verified against a real model: JSON-decision reliability, rerank and query-rewrite prompts, the quality of generated test questions, and the numbers in `tests/golden/baseline_fake.json` (which come from the fake embedder and only guard the chunking/fusion logic).
-
-## Tests, lint, CI
-
-```powershell
+```bash
 cd backend
-pytest                        # ~600 tests (599 at last run); deterministic fake LLM, no key or network needed
-ruff check . ; ruff format --check .
-cd ..\frontend ; npm run build    # typecheck + build
+pytest                        # about 600 tests
+ruff check . && ruff format --check .
+cd ../frontend && npm run build
 ```
 
-DB-backed tests use a separate `support_test` database on the Compose Postgres and Redis db 15 (override with `TEST_DATABASE_URL` / `TEST_REDIS_URL`); they skip if Postgres is unreachable, and **must not run in parallel** (they share it). Highlights: tenant isolation on every resource, SSRF and secret-handling suites, decision-loop policy (guards, confirmations, identity binding), workflows, hand-back and approvals, signed webhooks with retries, the job queue, scenario tests and the publish gate, retrieval quality on a golden set, budgets, retention, redaction, and the `/v1` contract snapshot. CI: [.github/workflows/ci.yml](.github/workflows/ci.yml).
+The suite uses a deterministic fake model and fake company APIs, so it needs no provider key or network. Database tests use a separate `support_test` database on the Compose Postgres and Redis db 15 (override with `TEST_DATABASE_URL` and `TEST_REDIS_URL`); they share state and must not run in parallel. CI runs on GitHub Actions ([ci.yml](.github/workflows/ci.yml)).
 
-## Operational notes
+Covered areas include tenant isolation, SSRF and secret handling, decision-loop policy, workflows, hand-back and approvals, signed webhooks, the job queue, scenario tests and the publish gate, retrieval quality on a golden corpus, budgets, retention, PII masking and the `/v1` contract.
 
-- **Background work** (webhook delivery, document indexing, expiry and retention sweeps) runs on a Postgres job queue. Run at least one worker in production; more are safe.
-- **Retention** is enforced by the housekeeping sweep (every few minutes) for *published* agents: conversations idle longer than the agent's `retention_days` are deleted with their messages and traces. Test conversations are removed after 3 days.
-- **PII masking** is pattern based (emails, card numbers that pass the Luhn check, phone numbers). It is not a guarantee; use "don't store conversation text" when nothing may be kept.
-- **Budgets** are soft: a turn already running finishes; new messages are refused with `429 budget_exceeded` until midnight UTC.
-- Quality checks, query rewriting, reranking and test-question generation each make extra model calls; they are opt-in or on demand.
-- Admins create users with an initial password (no email invitations yet). The legacy customer chat and ticket screens remain for the original demo; the platform direction does not depend on them.
+Because the tests use a fake model, they verify the platform's validation, policy and state handling rather than a real model's judgement. To measure retrieval and decisions against a live model, run `python scripts/eval_retrieval.py --record` and then `python scripts/eval_retrieval.py` for regressions, and use **Knowledge base → Quality** and each agent's **Tests** tab in the dashboard.
+
+## Notes
+
+- Background work (indexing, webhook delivery, expiry and retention sweeps) runs on a Postgres job queue. Run at least one worker in production.
+- Retention sweeps delete idle conversations of published agents after the agent's `retention_days`; test conversations are removed after three days.
+- PII masking is pattern based (emails, Luhn-valid card numbers, phone numbers). It does not catch names or addresses. Use "don't store conversation text" when nothing may be kept.
+- Token budgets are soft: a turn already running finishes, and new messages get `429 budget_exceeded` until midnight UTC.
+- Query rewriting, reranking, quality checks and generated test questions make extra model calls, so they are opt-in.
+- Admins create users with an initial password; there are no email invitations yet. The original customer chat and tickets screens remain from the first version of the project.
