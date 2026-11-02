@@ -229,3 +229,6 @@ frontend/tsconfig.tsbuildinfo
 .DS_Store
 Thumbs.db
 *.tsbuildinfo
+
+# Local planning notes
+PLAN.md
