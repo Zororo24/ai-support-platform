@@ -1,0 +1,844 @@
+{
+  "paths": {
+    "/v1/agents/{agent_id}/confirmations": {
+      "post": {
+        "description": "Approve or cancel the action a session is waiting on (for UIs with Yes/No buttons).\n\nFree-text \"yes\"/\"no\" sent to the messages endpoint works too; this is the deterministic route.",
+        "operationId": "post_confirmation_v1_agents__agent_id__confirmations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmationIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentMessageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Confirmation",
+        "tags": [
+          "public api"
+        ]
+      }
+    },
+    "/v1/agents/{agent_id}/end-users/{end_user_ref}": {
+      "delete": {
+        "description": "Delete every session of one end user.",
+        "operationId": "delete_end_user_v1_agents__agent_id__end_users__end_user_ref__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "end_user_ref",
+            "required": true,
+            "schema": {
+              "title": "End User Ref",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Delete End User V1 Agents  Agent Id  End Users  End User Ref  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete End User",
+        "tags": [
+          "public api"
+        ]
+      }
+    },
+    "/v1/agents/{agent_id}/messages": {
+      "post": {
+        "description": "Send one end-user message and get the agent's reply (JSON, or SSE with `stream: true`).",
+        "operationId": "post_message_v1_agents__agent_id__messages_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentMessageIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentMessageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Message",
+        "tags": [
+          "public api"
+        ]
+      }
+    },
+    "/v1/agents/{agent_id}/sessions/{session_id}": {
+      "delete": {
+        "description": "Delete a session and everything stored about it (privacy requests).",
+        "operationId": "delete_session_v1_agents__agent_id__sessions__session_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Session",
+        "tags": [
+          "public api"
+        ]
+      },
+      "get": {
+        "operationId": "get_session_state_v1_agents__agent_id__sessions__session_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Session State",
+        "tags": [
+          "public api"
+        ]
+      }
+    },
+    "/v1/agents/{agent_id}/tool-results": {
+      "post": {
+        "description": "Return the outcome of an action the agent asked your backend to perform (`action_request`).\n\nThe agent then continues from your result and answers; the response has the same shape as a\nmessage response.",
+        "operationId": "post_tool_result_v1_agents__agent_id__tool_results_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolResultIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentMessageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Tool Result",
+        "tags": [
+          "public api"
+        ]
+      }
+    }
+  },
+  "schemas": {
+    "AgentMessageIn": {
+      "properties": {
+        "end_user": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/EndUserIn"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        },
+        "session_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9_.:\\-]{1,200}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Session Id"
+        },
+        "stream": {
+          "default": false,
+          "title": "Stream",
+          "type": "boolean"
+        },
+        "workflow": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{1,39}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Workflow"
+        }
+      },
+      "required": [
+        "message"
+      ],
+      "title": "AgentMessageIn",
+      "type": "object"
+    },
+    "AgentMessageOut": {
+      "properties": {
+        "action_request": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Action Request"
+        },
+        "actions_taken": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Actions Taken",
+          "type": "array"
+        },
+        "citations": {
+          "items": {
+            "$ref": "#/components/schemas/app__api__schemas__v1__CitationOut"
+          },
+          "title": "Citations",
+          "type": "array"
+        },
+        "handoff": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Handoff"
+        },
+        "message_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Message Id"
+        },
+        "outcome": {
+          "default": "answered",
+          "title": "Outcome",
+          "type": "string"
+        },
+        "pending_approval": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Pending Approval"
+        },
+        "pending_confirmation": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Pending Confirmation"
+        },
+        "reply": {
+          "title": "Reply",
+          "type": "string"
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Run Id"
+        },
+        "session_id": {
+          "title": "Session Id",
+          "type": "string"
+        },
+        "status": {
+          "default": "completed",
+          "enum": [
+            "completed",
+            "needs_input",
+            "needs_confirmation",
+            "pending_approval",
+            "action_required",
+            "handed_off",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "usage": {
+          "$ref": "#/components/schemas/app__api__schemas__v1__UsageOut"
+        }
+      },
+      "required": [
+        "session_id",
+        "reply"
+      ],
+      "title": "AgentMessageOut",
+      "type": "object"
+    },
+    "ConfirmationIn": {
+      "properties": {
+        "confirmation_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Confirmation Id",
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "confirm",
+            "cancel"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "session_id": {
+          "pattern": "^[A-Za-z0-9_.:\\-]{1,200}$",
+          "title": "Session Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id",
+        "confirmation_id",
+        "decision"
+      ],
+      "title": "ConfirmationIn",
+      "type": "object"
+    },
+    "EndUserIn": {
+      "properties": {
+        "attributes": {
+          "additionalProperties": true,
+          "title": "Attributes",
+          "type": "object"
+        },
+        "id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "EndUserIn",
+      "type": "object"
+    },
+    "HTTPValidationError": {
+      "properties": {
+        "detail": {
+          "items": {
+            "$ref": "#/components/schemas/ValidationError"
+          },
+          "title": "Detail",
+          "type": "array"
+        }
+      },
+      "title": "HTTPValidationError",
+      "type": "object"
+    },
+    "SessionStateOut": {
+      "properties": {
+        "active_run": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Active Run"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "end_user_id": {
+          "title": "End User Id",
+          "type": "string"
+        },
+        "last_active_at": {
+          "format": "date-time",
+          "title": "Last Active At",
+          "type": "string"
+        },
+        "message_count": {
+          "title": "Message Count",
+          "type": "integer"
+        },
+        "session_id": {
+          "title": "Session Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id",
+        "end_user_id",
+        "created_at",
+        "last_active_at",
+        "message_count"
+      ],
+      "title": "SessionStateOut",
+      "type": "object"
+    },
+    "ToolResultIn": {
+      "description": "The outcome of an action your backend performed for the agent (`action_request`).",
+      "properties": {
+        "call_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Call Id",
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Error"
+        },
+        "result": {
+          "title": "Result"
+        },
+        "session_id": {
+          "pattern": "^[A-Za-z0-9_.:\\-]{1,200}$",
+          "title": "Session Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id",
+        "call_id"
+      ],
+      "title": "ToolResultIn",
+      "type": "object"
+    },
+    "ValidationError": {
+      "properties": {
+        "ctx": {
+          "title": "Context",
+          "type": "object"
+        },
+        "input": {
+          "title": "Input"
+        },
+        "loc": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          },
+          "title": "Location",
+          "type": "array"
+        },
+        "msg": {
+          "title": "Message",
+          "type": "string"
+        },
+        "type": {
+          "title": "Error Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "loc",
+        "msg",
+        "type"
+      ],
+      "title": "ValidationError",
+      "type": "object"
+    },
+    "app__api__schemas__v1__CitationOut": {
+      "properties": {
+        "document_id": {
+          "title": "Document Id",
+          "type": "string"
+        },
+        "snippet": {
+          "title": "Snippet",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "document_id",
+        "title",
+        "snippet"
+      ],
+      "title": "CitationOut",
+      "type": "object"
+    },
+    "app__api__schemas__v1__UsageOut": {
+      "properties": {
+        "latency_ms": {
+          "default": 0,
+          "title": "Latency Ms",
+          "type": "integer"
+        },
+        "tokens": {
+          "default": 0,
+          "title": "Tokens",
+          "type": "integer"
+        }
+      },
+      "title": "UsageOut",
+      "type": "object"
+    }
+  }
+}

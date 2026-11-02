@@ -218,3 +218,14 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+*.tsbuildinfo

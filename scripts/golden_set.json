@@ -1,0 +1,17 @@
+[
+  {"as": "acme.user@example.com", "q": "What is your return policy?", "intent": "knowledge", "cites": "Acme Return Policy", "contains": ["30 days"]},
+  {"as": "acme.user@example.com", "q": "How long do I have to send something back?", "intent": "knowledge", "cites": "Acme Return Policy", "contains": ["30"]},
+  {"as": "acme.user@example.com", "q": "Can I return a gift card?", "intent": "knowledge", "cites": "Acme Return Policy", "contains": ["cannot"]},
+  {"as": "acme.user@example.com", "q": "How fast is express shipping and what does it cost?", "intent": "knowledge", "cites": "Acme Shipping FAQ", "contains": ["14.99"]},
+  {"as": "acme.user@example.com", "q": "Do you ship to Germany?", "intent": "knowledge", "cites": "Acme Shipping FAQ", "contains": ["United States"]},
+  {"as": "acme.user@example.com", "q": "Where is order ACM-1001?", "intent": "order", "order": "ACM-1001", "contains": ["shipped"]},
+  {"as": "acme.user@example.com", "q": "can you check on acm-1001 for me", "intent": "order", "order": "ACM-1001", "contains": ["shipped"]},
+  {"as": "acme.user@example.com", "q": "What's the status of order GLX-2001?", "intent": "order", "order": null, "contains": ["couldn't find"]},
+  {"as": "acme.user@example.com", "q": "I need a refund exception for a final sale item", "intent": "ticket", "ticket": true},
+  {"as": "acme.user@example.com", "q": "I want to talk to a real person about a damaged package", "intent": "ticket", "ticket": true},
+  {"as": "acme.user@example.com", "q": "Hi there!", "intent": "other", "ticket": false},
+  {"as": "acme.user@example.com", "q": "Tell me about the Globex Flex Credit program", "intent": "knowledge", "no_cite_containing": "Globex", "not_contains": ["store credit"]},
+  {"as": "acme.user@example.com", "q": "What is the capital of Australia?", "intent": "knowledge", "refuses": true},
+  {"as": "globex.user@example.com", "q": "What is your return policy?", "intent": "knowledge", "cites": "Globex Return Policy", "contains": ["60 days"]},
+  {"as": "globex.user@example.com", "q": "Where is order GLX-2001?", "intent": "order", "order": "GLX-2001", "contains": ["processing"]}
+]
