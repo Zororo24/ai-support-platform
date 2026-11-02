@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chat with us</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 34rem; margin: 2rem auto; padding: 0 1rem; color: #1f2430; }
+    #log { border: 1px solid #d7dbe3; border-radius: 10px; padding: 1rem; min-height: 14rem; display: flex; flex-direction: column; gap: .5rem; }
+    .msg { padding: .5rem .75rem; border-radius: 10px; max-width: 85%; white-space: pre-wrap; }
+    .you { align-self: flex-end; background: #dbe7ff; }
+    .bot { align-self: flex-start; background: #f1f3f7; }
+    .note { align-self: center; font-size: .8rem; color: #6b7280; }
+    form { display: flex; gap: .5rem; margin-top: .75rem; }
+    input { flex: 1; padding: .6rem; border: 1px solid #c3c9d6; border-radius: 8px; }
+    button { padding: .6rem 1rem; border: 0; border-radius: 8px; background: #2f5bea; color: #fff; cursor: pointer; }
+    button.secondary { background: #e5e8ef; color: #1f2430; }
+  </style>
+</head>
+<body>
+  <h1>Chat with us</h1>
+  <div id="log" aria-live="polite"></div>
+  <form id="form">
+    <input id="text" placeholder="Type your question…" autocomplete="off" required>
+    <button>Send</button>
+  </form>
+  <script>
+    const log = document.getElementById("log");
+    let sessionId = null;
+
+    function add(kind, text) {
+      const el = document.createElement("div");
+      el.className = "msg " + kind;
+      el.textContent = text;
+      log.appendChild(el);
+      el.scrollIntoView({ block: "end" });
+      return el;
+    }
+
+    async function post(path, body) {
+      const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Something went wrong");
+      return data;
+    }
+
+    function show(data) {
+      sessionId = data.session_id;
+      add("bot", data.reply);
+      if (data.citations.length) add("note", "Sources: " + data.citations.join(", "));
+      if (data.status === "needs_confirmation") {
+        const row = document.createElement("div");
+        row.className = "msg bot";
+        for (const [label, approve, cls] of [["Yes", true, ""], ["No", false, "secondary"]]) {
+          const button = document.createElement("button");
+          button.textContent = label;
+          button.className = cls;
+          button.style.marginRight = ".5rem";
+          button.onclick = async () => {
+            row.remove();
+            add("you", label);
+            try { show(await post("/api/confirm", { session_id: sessionId, confirmation_id: data.confirmation.id, approve })); }
+            catch (e) { add("note", e.message); }
+          };
+          row.appendChild(button);
+        }
+        log.appendChild(row);
+      }
+      if (data.status === "pending_approval") add("note", "Waiting for our team to review this.");
+      if (data.handoff) add("note", "A person from our team will take it from here.");
+    }
+
+    document.getElementById("form").onsubmit = async (event) => {
+      event.preventDefault();
+      const input = document.getElementById("text");
+      const message = input.value.trim();
+      if (!message) return;
+      input.value = "";
+      add("you", message);
+      try { show(await post("/api/chat", { message, session_id: sessionId })); }
+      catch (e) { add("note", e.message); }
+    };
+  </script>
+</body>
+</html>
