@@ -1,0 +1,63 @@
+[project]
+name = "ai-support-platform-api"
+version = "0.1.0"
+description = "FastAPI backend for the multi-tenant AI support platform"
+requires-python = ">=3.12"
+dependencies = [
+  "alembic>=1.14",
+  "bcrypt>=4.2",
+  "cryptography>=43",
+  "email-validator>=2.2",
+  "fastapi>=0.115",
+  "httpx>=0.27",
+  "jsonschema>=4.20",
+  "langgraph>=0.2",
+  "langchain-core>=0.3",
+  "pgvector>=0.3",
+  "psycopg[binary]>=3.2",
+  "pydantic-settings>=2.6",
+  "pypdf>=5",
+  "python-docx>=1.1",
+  "python-multipart>=0.0.12",
+  "PyJWT>=2.9",
+  "redis>=5.2",
+  "sqlalchemy>=2.0",
+  "uvicorn[standard]>=0.32",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+  "ruff>=0.8",
+]
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = [
+  "B008",  # FastAPI's Depends()/Query() defaults are the framework's idiom
+  "B904",  # route handlers translate domain errors into HTTP errors; the cause adds nothing for clients
+  "UP017",  # datetime.UTC / StrEnum need 3.11+; kept portable for contributors on older interpreters
+  "UP042",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
+# Long prompt and template strings read better unbroken.
+"app/agents/*.py" = ["E501"]
+"app/services/action_test.py" = ["E501"]
