@@ -1,0 +1,6 @@
+{
+  "about": "Recorded 2026-11-02 with the fake hashed bag-of-words embedder (tests/fakes.py), hybrid search, 32 questions over 8 documents. It guards chunking, heading context and fusion; it says nothing about semantic quality. Real-model numbers belong in baseline_live.json (run scripts/eval_retrieval.py with a key).",
+  "cases": 32,
+  "recall": {"1": 0.9688, "3": 1.0, "5": 1.0},
+  "mrr": 0.9792
+}
